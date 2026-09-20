@@ -1,0 +1,4 @@
+package com.example.planning_poker_room.store.model
+
+@JvmInline
+value class ParticipantName(val value: String)
