@@ -13,6 +13,9 @@ class WebSocketConfig(
 ) : WebSocketConfigurer {
 
     override fun registerWebSocketHandlers(registry: WebSocketHandlerRegistry) {
-        registry.addHandler(customWebSocketHandler, "/ws")
+        registry
+            .addHandler(customWebSocketHandler, "/ws/rooms/{roomId}")
+            .addInterceptors(CustomHandShakeInterceptor())
+            .setAllowedOrigins("*")
     }
 }

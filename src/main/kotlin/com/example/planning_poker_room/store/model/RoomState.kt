@@ -1,6 +1,6 @@
 package com.example.planning_poker_room.store.model
 
-enum class RoomPhase {
+enum class RoomState {
     VOTING,
     REVEALED
 }

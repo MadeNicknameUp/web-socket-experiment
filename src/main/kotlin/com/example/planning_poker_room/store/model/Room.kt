@@ -5,21 +5,20 @@ import java.util.UUID
 class Room private constructor(
     val id: UUID,
     val name: RoomName,
-    val hostParticipantId: UUID,
-    val participants: List<UUID>,
-    var phase: RoomPhase,
+//    val hostParticipantId: UUID,
+    val participants: MutableList<Participant>,
+    var phase: RoomState,
     var round: Round?
 ) {
 
     companion object {
-        fun create(name: RoomName, hostId: UUID): Room {
+        fun create(name: RoomName): Room {
 
             return Room(
                 id = UUID.randomUUID(),
                 name = name,
-                hostParticipantId = hostId,
-                phase = RoomPhase.VOTING,
-                participants = emptyList(),
+                phase = RoomState.VOTING,
+                participants = mutableListOf(),
                 round = null
             )
         }

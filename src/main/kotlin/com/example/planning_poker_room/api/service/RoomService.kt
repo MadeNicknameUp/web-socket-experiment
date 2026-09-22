@@ -1,7 +1,10 @@
 package com.example.planning_poker_room.api.service
 
 import com.example.planning_poker_room.api.dto.CreateRoomRequest
+import com.example.planning_poker_room.exception.unit.RoomNotFoundException
+import com.example.planning_poker_room.infrastructure.util.addParticipant
 import com.example.planning_poker_room.store.model.Participant
+import com.example.planning_poker_room.store.model.ParticipantName
 import com.example.planning_poker_room.store.model.Room
 import com.example.planning_poker_room.store.model.RoomName
 import com.example.planning_poker_room.store.repository.RoomRepository
@@ -15,18 +18,19 @@ class RoomService(
 
     fun createRoom(request: CreateRoomRequest): Room =
         roomRepository.save(
-            Room.create(
-                RoomName(request.name),
-                UUID.randomUUID()
-            )
+            Room.create(RoomName(request.name))
         )
 
-    fun getRoomById(id: UUID): Room?
-        = roomRepository.findById(id)
+    fun getRoomById(id: UUID): Room
+        = roomRepository.findById(id) ?: throw RoomNotFoundException("Room with id: $id does not exit.")
 
-    // TODO: idk what to do here yet.
-    fun joinRoom(id: UUID): Room? {
+    fun joinRoom(roomId: UUID, participantName: String): Participant {
 
-        return roomRepository.findById(id)
+        val room: Room = roomRepository.findById(roomId)
+            ?: throw RoomNotFoundException("Room with id: $roomId does not exit.")
+
+        return room.addParticipant(
+            Participant.create(ParticipantName(participantName))
+        )
     }
 }

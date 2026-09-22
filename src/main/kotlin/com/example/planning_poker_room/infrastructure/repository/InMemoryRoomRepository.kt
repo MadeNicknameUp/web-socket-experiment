@@ -1,7 +1,8 @@
-package com.example.planning_poker_room.store.repository
+package com.example.planning_poker_room.infrastructure.repository
 
 import com.example.planning_poker_room.store.model.Room
 import com.example.planning_poker_room.store.model.RoomName
+import com.example.planning_poker_room.store.repository.RoomRepository
 import org.springframework.stereotype.Repository
 import java.util.UUID
 
