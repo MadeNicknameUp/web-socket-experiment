@@ -1,8 +1,10 @@
 package com.example.planning_poker_room.websocket.service
 
+import com.example.planning_poker_room.exception.unit.ConnectionAlreadyExistsException
 import com.example.planning_poker_room.exception.unit.ParticipantNotFoundException
 import com.example.planning_poker_room.exception.unit.RoomNotFoundException
 import com.example.planning_poker_room.store.model.Connection
+import com.example.planning_poker_room.store.model.Room
 import com.example.planning_poker_room.store.repository.ConnectionRepository
 import com.example.planning_poker_room.store.repository.RoomRepository
 import org.springframework.stereotype.Service
@@ -12,11 +14,10 @@ import java.util.UUID
 @Service
 class SocketService(
     private val connectionRepository: ConnectionRepository,
-    private val roomRepository: RoomRepository,
-    private val objectMapper: ObjectMapper
+    private val roomRepository: RoomRepository
 ) {
 
-    fun joinRoom(roomId: UUID?, participantId: UUID?, sessionId: String) {
+    fun joinRoom(roomId: UUID?, participantId: UUID?, sessionId: String): Room {
 
         require(roomId != null && participantId != null) {
             "Invalid value: roomId and participantId must not be null"
@@ -28,6 +29,10 @@ class SocketService(
         val participant = room.participants.find { it.id == participantId }
             ?: throw ParticipantNotFoundException("Participant with id $participantId does not exist.")
 
+        if (participant.connected) {
+            throw ConnectionAlreadyExistsException("Participant is already connected.")
+        }
+
         connectionRepository.save(Connection(
             participantId = participantId,
             roomId = roomId,
@@ -35,5 +40,7 @@ class SocketService(
             )
         )
         participant.connected = true
+
+        return room
     }
 }

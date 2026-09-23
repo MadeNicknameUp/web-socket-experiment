@@ -4,6 +4,6 @@ import java.util.UUID
 
 class Connection(
     val participantId: UUID,
-    val sessionId: String,
+    var sessionId: String?,
     val roomId: UUID
 )

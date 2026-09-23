@@ -1,7 +1,12 @@
 package com.example.planning_poker_room.websocket
 
-import com.example.planning_poker_room.store.repository.RoomRepository
+import com.example.planning_poker_room.api.service.RoomService
+import com.example.planning_poker_room.exception.unit.ParticipantNotFoundException
+import com.example.planning_poker_room.store.repository.ConnectionRepository
 import com.example.planning_poker_room.store.repository.SessionRepository
+import com.example.planning_poker_room.websocket.dto.ParticipantDto
+import com.example.planning_poker_room.websocket.dto.ParticipantJoined
+import com.example.planning_poker_room.websocket.dto.ParticipantLeft
 import com.example.planning_poker_room.websocket.dto.SimpleResponse
 import com.example.planning_poker_room.websocket.dto.UserRequest
 import com.example.planning_poker_room.websocket.dto.WebSocketMessage
@@ -17,30 +22,49 @@ import java.util.UUID
 
 @Component
 class CustomWebSocketHandler(
-    private val repository: SessionRepository,
-    private val roomRepository: RoomRepository,
+    private val connectionRepository: ConnectionRepository,
+    private val sessionRepository: SessionRepository,
+    private val roomService: RoomService,
     private val service: SocketService,
     private val objectMapper: ObjectMapper
 ) : TextWebSocketHandler() {
 
     override fun afterConnectionEstablished(session: WebSocketSession) {
-        repository.save(session)
+        sessionRepository.save(session)
 
         println("CONNECTED ${session.id}")
 
-        val roomId: UUID? = session.attributes["roomId"] as UUID?
-        val participantId: UUID? = session.attributes["participantId"] as UUID?
+        println(session.attributes["roomId"])
+        println(session.attributes["participantId"])
 
-        service.joinRoom(
-            roomId,
-            participantId,
-            session.id
+        val roomId: UUID = UUID.fromString(session.attributes["roomId"] as String?)
+        val participantId: UUID = UUID.fromString(session.attributes["participantId"] as String?)
+
+        val room = service.joinRoom(
+            roomId = roomId,
+            participantId = participantId,
+            sessionId = session.id
         )
 
-        repository
-            .findAllExceptForById(session.id)
+        val connection = connectionRepository.findBySessionId(session.id)
+
+        val currentParticipant = room.participants.find { it.id == connection.participantId }
+            ?: throw ParticipantNotFoundException("No participant with id: $participantId found.")
+
+        val responseMessage = TextMessage(objectMapper.writeValueAsString(ParticipantJoined(
+            participant = ParticipantDto(
+                id = currentParticipant.id,
+                name = currentParticipant.name.value
+            ))))
+
+        room.participants
             .forEach {
-                it.sendMessage(TextMessage("${session.id} joined."))
+
+                val sessionId = connectionRepository.findByParticipantId(it.id).sessionId ?: return
+
+                sessionRepository.findById(
+                    sessionId
+                ).sendMessage(responseMessage)
             }
     }
 
@@ -54,11 +78,19 @@ class CustomWebSocketHandler(
 
         val response = objectMapper.writeValueAsString(routeMessage(request))
 
-        // find a room and sen to it's participants
-        repository
-            .findAllExceptForById(session.id)
+        val connection = connectionRepository.findBySessionId(session.id)
+
+        val room = roomService.getRoomById(connection.roomId)
+
+        room.participants
             .forEach {
-                it.sendMessage(TextMessage(response))
+                val sessionId = connectionRepository.findByParticipantId(it.id).sessionId ?: return
+
+                if (sessionId != session.id) return
+
+                sessionRepository.findById(
+                    sessionId
+                ).sendMessage(TextMessage(response))
             }
     }
 
@@ -66,14 +98,34 @@ class CustomWebSocketHandler(
         session: WebSocketSession,
         status: CloseStatus
     ) {
-        repository.remove(session)
+        sessionRepository.remove(session)
 
         println("DISCONNECTED ${session.id}: $status")
 
-        repository
-            .findAll()
+        val connection = connectionRepository.findBySessionId(session.id)
+
+        val room = roomService.getRoomById(connection.roomId)
+
+        connection.sessionId = null
+
+        val currentParticipant = room.participants.find { it.id == connection.participantId }
+            ?: throw ParticipantNotFoundException("No participant with id: ${connection.participantId} found.")
+
+        currentParticipant.connected = false
+
+        val responseMessage = TextMessage(objectMapper.writeValueAsString(ParticipantLeft(
+            participantId = currentParticipant.id
+        )))
+
+        room.participants
             .forEach {
-                it.sendMessage(TextMessage("${session.id} left."))
+                val sessionId = connectionRepository.findByParticipantId(it.id).sessionId ?: return
+
+                if (sessionId == session.id) return
+
+                sessionRepository.findById(
+                    sessionId
+                ).sendMessage(responseMessage)
             }
     }
 

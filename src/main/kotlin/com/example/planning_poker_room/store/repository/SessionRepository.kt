@@ -8,6 +8,8 @@ interface SessionRepository {
 
     fun findAll(): List<WebSocketSession>
 
+    fun findById(sessionId: String): WebSocketSession
+
     fun remove(session: WebSocketSession)
 
     fun save(session: WebSocketSession): WebSocketSession

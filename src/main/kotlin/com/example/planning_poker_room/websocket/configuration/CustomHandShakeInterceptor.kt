@@ -1,6 +1,5 @@
 package com.example.planning_poker_room.websocket.configuration
 
-import jakarta.servlet.http.HttpServletRequest
 import org.springframework.http.server.ServerHttpRequest
 import org.springframework.http.server.ServerHttpResponse
 import org.springframework.http.server.ServletServerHttpRequest
@@ -18,12 +17,14 @@ class CustomHandShakeInterceptor : HandshakeInterceptor {
     ): Boolean {
 
         if (request is ServletServerHttpRequest) {
-            val httpRequest = (request as ServletServerHttpRequest).servletRequest
+            val httpRequest = request.servletRequest
 
             val path: String = httpRequest.requestURI
 
-            val roomId = path.substring(path.lastIndexOf("/"), path.indexOf("?"))
-            val participantId = path.substring(path.indexOf("=" + 1))
+            println("PATH: $path")
+
+            val roomId = path.substringAfterLast("/")
+            val participantId = httpRequest.getParameter("participantId")
 
             attributes["roomId"] = roomId
             attributes["participantId"] = participantId
@@ -38,6 +39,6 @@ class CustomHandShakeInterceptor : HandshakeInterceptor {
         wsHandler: WebSocketHandler,
         exception: Exception?
     ) {
-        TODO("Not yet implemented")
+        return;
     }
 }
