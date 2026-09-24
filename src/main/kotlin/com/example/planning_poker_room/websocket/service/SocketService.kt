@@ -71,4 +71,61 @@ class SocketService(
 
         return participant.id
     }
+
+    fun reveal(sessionId: String) {
+
+        val connection = connectionRepository.findBySessionId(sessionId)
+
+        val room = roomRepository.findById(connection.roomId)
+            ?: throw RoomNotFoundException("Room with id: ${connection.roomId} does not exist.")
+
+        check(room.phase == RoomState.VOTING) {
+            "Invalid state: Room is not VOTING yet/anymore."
+        }
+
+        // TODO: Check if session owner is a host.
+
+        room.phase = RoomState.REVEALED
+    }
+
+    fun roundReset(sessionId: String) {
+
+        val connection = connectionRepository.findBySessionId(sessionId)
+
+        val room = roomRepository.findById(connection.roomId)
+            ?: throw RoomNotFoundException("Room with id: ${connection.roomId} does not exist.")
+
+        // TODO: Check if session owner is a host.
+
+        room.phase = RoomState.VOTING
+        room.participants.forEach { it.vote = null }
+    }
+
+    fun findRoomBySessionId(sessionId: String): Room {
+
+        val connection = connectionRepository.findBySessionId(sessionId)
+
+        val room = roomRepository.findById(connection.roomId)
+            ?: throw RoomNotFoundException("Room with id: ${connection.roomId} does not exist.")
+
+        return room
+    }
+
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

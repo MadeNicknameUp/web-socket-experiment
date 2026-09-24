@@ -4,10 +4,18 @@ import com.example.planning_poker_room.api.service.RoomService
 import com.example.planning_poker_room.exception.unit.ParticipantNotFoundException
 import com.example.planning_poker_room.store.repository.ConnectionRepository
 import com.example.planning_poker_room.store.repository.SessionRepository
+import com.example.planning_poker_room.websocket.dto.ExtendedParticipantDto
 import com.example.planning_poker_room.websocket.dto.ParticipantDto
-import com.example.planning_poker_room.websocket.dto.ParticipantJoined
+import com.example.planning_poker_room.websocket.dto.JoinRoomResponse
 import com.example.planning_poker_room.websocket.dto.LeftRoomResponse
 import com.example.planning_poker_room.websocket.dto.ParticipantVotedResponse
+import com.example.planning_poker_room.websocket.dto.ResetRoundRequest
+import com.example.planning_poker_room.websocket.dto.ResponseMode
+import com.example.planning_poker_room.websocket.dto.RevealRequest
+import com.example.planning_poker_room.websocket.dto.RoomStateRequest
+import com.example.planning_poker_room.websocket.dto.RoomStateResponse
+import com.example.planning_poker_room.websocket.dto.RoundResetResponse
+import com.example.planning_poker_room.websocket.dto.RoundRevealedResponse
 import com.example.planning_poker_room.websocket.dto.SimpleResponse
 import com.example.planning_poker_room.websocket.dto.WebSocketRequest
 import com.example.planning_poker_room.websocket.dto.VoteRequest
@@ -53,21 +61,19 @@ class CustomWebSocketHandler(
         val currentParticipant = room.participants.find { it.id == connection.participantId }
             ?: throw ParticipantNotFoundException("No participant with id: $participantId found.")
 
-        val responseMessage = TextMessage(objectMapper.writeValueAsString(ParticipantJoined(
+        val jsonJoinRoomResponse = objectMapper.writeValueAsString(JoinRoomResponse(
             participant = ParticipantDto(
                 id = currentParticipant.id,
                 name = currentParticipant.name.value
-            ))))
+            )))
 
-        room.participants
-            .forEach {
+        val jsonRoomStateResponse = objectMapper.writeValueAsString(RoomStateResponse(
+            phase = room.phase.toString(),
+            participants = room.participants.map { ExtendedParticipantDto.of(it) }
+        ))
 
-                val sessionId = connectionRepository.findByParticipantId(it.id).sessionId ?: return
-
-                sessionRepository.findById(
-                    sessionId
-                ).sendMessage(responseMessage)
-            }
+        broadcast(room.id, jsonJoinRoomResponse)
+        broadcast(room.id, jsonRoomStateResponse)
     }
 
     override fun handleTextMessage(
@@ -76,23 +82,30 @@ class CustomWebSocketHandler(
     ) {
         println("${session.id} -> ${message.payload}")
 
-        val response = routeMessage(message, session.id)
+        val typeResponsePair = routeMessage(message, session.id)
+        val responseMode = typeResponsePair.first
+        val response = typeResponsePair.second
         val jsonResponse = objectMapper.writeValueAsString(response)
 
         val connection = connectionRepository.findBySessionId(session.id)
 
         val room = roomService.getRoomById(connection.roomId)
 
-        println(connectionRepository.findByRoomId(room.id).size)
-
-        connectionRepository.findByRoomId(room.id)
-            .map { it.sessionId }
-            .forEach {
-
-                if (it != null && it != session.id)
-                    sessionRepository.findById(it).sendMessage(TextMessage(jsonResponse))
-
-            }
+        when (responseMode) {
+            ResponseMode.BROADCAST -> broadcast(
+                room.id,
+                jsonResponse
+            )
+            ResponseMode.MULTICAST_EXCEPT_SENDER -> multicastExceptSender(
+                room.id,
+                session.id,
+                jsonResponse
+            )
+            ResponseMode.UNICAST_SENDER -> unicastSender(
+                session.id,
+                jsonResponse
+            )
+        }
     }
 
     override fun afterConnectionClosed(
@@ -122,15 +135,11 @@ class CustomWebSocketHandler(
             objectMapper.writeValueAsString(response)
         )
 
-        println("Room: ${room.participants}")
-
         room.participants
             .forEach {
-                val sessionId = connectionRepository.findByParticipantId(it.id).sessionId ?: return
+                val sessionId = connectionRepository.findByParticipantId(it.id).sessionId
 
-                println("Iterating: $sessionId")
-
-                if (sessionId != session.id) {
+                if (sessionId != null && sessionId != session.id) {
 
                     sessionRepository.findById(
                         sessionId
@@ -139,7 +148,7 @@ class CustomWebSocketHandler(
             }
     }
 
-    private fun routeMessage(message: TextMessage, sessionId: String) : WebSocketMessage {
+    private fun routeMessage(message: TextMessage, sessionId: String) : Pair<ResponseMode, WebSocketMessage> {
 
         val request = objectMapper.readValue(
             message.payload,
@@ -147,13 +156,61 @@ class CustomWebSocketHandler(
         )
 
         if (request.type == WebSocketMessageType.PING)
-            return SimpleResponse(WebSocketMessageType.PONG)
+            return Pair(ResponseMode.UNICAST_SENDER, SimpleResponse(WebSocketMessageType.PONG))
 
         return when (request) {
-            is VoteRequest -> ParticipantVotedResponse(
+            is VoteRequest -> Pair(ResponseMode.MULTICAST_EXCEPT_SENDER, ParticipantVotedResponse(
                 participantId = service.vote(request.vote, sessionId)
-            )
+            ))
+            is RevealRequest -> {
+                service.reveal(sessionId)
+                return Pair(ResponseMode.BROADCAST, RoundRevealedResponse(
+                    WebSocketMessageType.ROUND_REVEALED,
+                    roomService.getRoomById(connectionRepository.findBySessionId(sessionId).roomId).participants.associate {
+                        Pair(
+                            it.id,
+                            it.vote
+                        )
+                    }
+                ))
+            }
+            is ResetRoundRequest -> {
+                service.roundReset(sessionId)
+                return Pair(ResponseMode.BROADCAST, RoundResetResponse())
+            }
+            is RoomStateRequest ->
+                Pair(
+                    ResponseMode.UNICAST_SENDER,
+                    RoomStateResponse.of(service.findRoomBySessionId(sessionId))
+                )
             else -> throw RuntimeException("Invalid request type: ${request.type}")
         }
     }
+
+    private fun broadcast(roomId: UUID, payload: String) {
+        connectionRepository.findByRoomId(roomId)
+            .map { it.sessionId }
+            .forEach {
+
+                if (it != null)
+                    sessionRepository.findById(it).sendMessage(TextMessage(payload))
+
+            }
+    }
+
+    private fun unicastSender(sessionId: String, payload: String) {
+        sessionRepository.findById(sessionId).sendMessage(TextMessage(payload))
+    }
+
+    private fun multicastExceptSender(roomId: UUID, sessionId: String, payload: String) {
+        connectionRepository.findByRoomId(roomId)
+            .map { it.sessionId }
+            .forEach {
+
+                if (it != null && it != sessionId)
+                    sessionRepository.findById(it).sendMessage(TextMessage(payload))
+
+            }
+    }
+
 }

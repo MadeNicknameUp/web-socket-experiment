@@ -6,9 +6,11 @@ enum class WebSocketMessageType {
     PONG,
     VOTE, // valid values: 1 2 3 5 8 13 21
     REVEAL,
-    RESET_ROUND, // host only
+    ROUND_RESET, // host only
     // --- Response
     LEFT,
     JOINED,
-    VOTE_RECEIVED
+    ROOM_STATE,
+    VOTE_RECEIVED,
+    ROUND_REVEALED
 }
