@@ -8,6 +8,7 @@ enum class WebSocketMessageType {
     REVEAL,
     RESET_ROUND, // host only
     // --- Response
+    LEFT,
     JOINED,
-    LEFT
+    VOTE_RECEIVED
 }

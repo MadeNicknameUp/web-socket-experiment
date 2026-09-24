@@ -1,4 +1,4 @@
-const socket = new WebSocket("ws://localhost:8080/ws");
+const socket = new WebSocket("ws://localhost:8080/");
 
 const button = document.getElementById("sendBtn");
 const input = document.getElementById("messageInput");

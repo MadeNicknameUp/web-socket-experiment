@@ -6,7 +6,7 @@ class Participant private constructor(
     val id: UUID,
     val name: ParticipantName,
     var connected: Boolean,
-    var vote: String?
+    var vote: Int?
 ) {
 
     companion object {

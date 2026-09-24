@@ -6,9 +6,11 @@ import com.example.planning_poker_room.store.repository.ConnectionRepository
 import com.example.planning_poker_room.store.repository.SessionRepository
 import com.example.planning_poker_room.websocket.dto.ParticipantDto
 import com.example.planning_poker_room.websocket.dto.ParticipantJoined
-import com.example.planning_poker_room.websocket.dto.ParticipantLeft
+import com.example.planning_poker_room.websocket.dto.LeftRoomResponse
+import com.example.planning_poker_room.websocket.dto.ParticipantVotedResponse
 import com.example.planning_poker_room.websocket.dto.SimpleResponse
-import com.example.planning_poker_room.websocket.dto.UserRequest
+import com.example.planning_poker_room.websocket.dto.WebSocketRequest
+import com.example.planning_poker_room.websocket.dto.VoteRequest
 import com.example.planning_poker_room.websocket.dto.WebSocketMessage
 import com.example.planning_poker_room.websocket.dto.WebSocketMessageType
 import com.example.planning_poker_room.websocket.service.SocketService
@@ -74,23 +76,22 @@ class CustomWebSocketHandler(
     ) {
         println("${session.id} -> ${message.payload}")
 
-        val request = objectMapper.readValue(message.payload, UserRequest::class.java)
-
-        val response = objectMapper.writeValueAsString(routeMessage(request))
+        val response = routeMessage(message, session.id)
+        val jsonResponse = objectMapper.writeValueAsString(response)
 
         val connection = connectionRepository.findBySessionId(session.id)
 
         val room = roomService.getRoomById(connection.roomId)
 
-        room.participants
+        println(connectionRepository.findByRoomId(room.id).size)
+
+        connectionRepository.findByRoomId(room.id)
+            .map { it.sessionId }
             .forEach {
-                val sessionId = connectionRepository.findByParticipantId(it.id).sessionId ?: return
 
-                if (sessionId != session.id) return
+                if (it != null && it != session.id)
+                    sessionRepository.findById(it).sendMessage(TextMessage(jsonResponse))
 
-                sessionRepository.findById(
-                    sessionId
-                ).sendMessage(TextMessage(response))
             }
     }
 
@@ -113,25 +114,45 @@ class CustomWebSocketHandler(
 
         currentParticipant.connected = false
 
-        val responseMessage = TextMessage(objectMapper.writeValueAsString(ParticipantLeft(
+        val response = LeftRoomResponse(
             participantId = currentParticipant.id
-        )))
+        )
+
+        val responseMessage = TextMessage(
+            objectMapper.writeValueAsString(response)
+        )
+
+        println("Room: ${room.participants}")
 
         room.participants
             .forEach {
                 val sessionId = connectionRepository.findByParticipantId(it.id).sessionId ?: return
 
-                if (sessionId == session.id) return
+                println("Iterating: $sessionId")
 
-                sessionRepository.findById(
-                    sessionId
-                ).sendMessage(responseMessage)
+                if (sessionId != session.id) {
+
+                    sessionRepository.findById(
+                        sessionId
+                    ).sendMessage(responseMessage)
+                }
             }
     }
 
-    private fun routeMessage(request: UserRequest) : WebSocketMessage {
-        when (request.type) {
-            WebSocketMessageType.PING -> return SimpleResponse(WebSocketMessageType.PONG)
+    private fun routeMessage(message: TextMessage, sessionId: String) : WebSocketMessage {
+
+        val request = objectMapper.readValue(
+            message.payload,
+            WebSocketRequest::class.java
+        )
+
+        if (request.type == WebSocketMessageType.PING)
+            return SimpleResponse(WebSocketMessageType.PONG)
+
+        return when (request) {
+            is VoteRequest -> ParticipantVotedResponse(
+                participantId = service.vote(request.vote, sessionId)
+            )
             else -> throw RuntimeException("Invalid request type: ${request.type}")
         }
     }
