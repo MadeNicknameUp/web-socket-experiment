@@ -1,4 +1,4 @@
-package com.example.planning_poker_room.websocket.dto
+package com.example.planning_poker_room.websocket
 
 enum class ResponseMode {
     BROADCAST,

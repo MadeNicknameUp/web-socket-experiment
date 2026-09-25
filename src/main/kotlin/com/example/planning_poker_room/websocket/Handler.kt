@@ -1,26 +1,31 @@
 package com.example.planning_poker_room.websocket
 
+import com.example.planning_poker_room.exception.unit.ConnectionNotFoundException
+import com.example.planning_poker_room.exception.unit.NotFoundException
 import com.example.planning_poker_room.api.service.RoomService
+import com.example.planning_poker_room.exception.unit.InvalidMessageException
+import com.example.planning_poker_room.exception.unit.InvalidVoteException
 import com.example.planning_poker_room.exception.unit.ParticipantNotFoundException
+import com.example.planning_poker_room.exception.unit.RoomNotFoundException
 import com.example.planning_poker_room.store.repository.ConnectionRepository
 import com.example.planning_poker_room.store.repository.SessionRepository
-import com.example.planning_poker_room.websocket.dto.ExtendedParticipantDto
-import com.example.planning_poker_room.websocket.dto.ParticipantDto
-import com.example.planning_poker_room.websocket.dto.JoinRoomResponse
-import com.example.planning_poker_room.websocket.dto.LeftRoomResponse
-import com.example.planning_poker_room.websocket.dto.ParticipantVotedResponse
-import com.example.planning_poker_room.websocket.dto.ResetRoundRequest
-import com.example.planning_poker_room.websocket.dto.ResponseMode
-import com.example.planning_poker_room.websocket.dto.RevealRequest
-import com.example.planning_poker_room.websocket.dto.RoomStateRequest
-import com.example.planning_poker_room.websocket.dto.RoomStateResponse
-import com.example.planning_poker_room.websocket.dto.RoundResetResponse
-import com.example.planning_poker_room.websocket.dto.RoundRevealedResponse
-import com.example.planning_poker_room.websocket.dto.SimpleResponse
-import com.example.planning_poker_room.websocket.dto.WebSocketRequest
-import com.example.planning_poker_room.websocket.dto.VoteRequest
+import com.example.planning_poker_room.websocket.dto.response.ExtendedParticipantDto
+import com.example.planning_poker_room.websocket.dto.response.ParticipantDto
+import com.example.planning_poker_room.websocket.dto.response.JoinRoomResponse
+import com.example.planning_poker_room.websocket.dto.response.LeftRoomResponse
+import com.example.planning_poker_room.websocket.dto.response.ParticipantVotedResponse
+import com.example.planning_poker_room.websocket.dto.request.ResetRoundRequest
+import com.example.planning_poker_room.websocket.dto.request.RevealRequest
+import com.example.planning_poker_room.websocket.dto.request.RoomStateRequest
+import com.example.planning_poker_room.websocket.dto.response.RoomStateResponse
+import com.example.planning_poker_room.websocket.dto.response.RoundResetResponse
+import com.example.planning_poker_room.websocket.dto.response.RoundRevealedResponse
+import com.example.planning_poker_room.websocket.dto.response.SimpleResponse
+import com.example.planning_poker_room.websocket.dto.request.WebSocketRequest
+import com.example.planning_poker_room.websocket.dto.request.VoteRequest
 import com.example.planning_poker_room.websocket.dto.WebSocketMessage
 import com.example.planning_poker_room.websocket.dto.WebSocketMessageType
+import com.example.planning_poker_room.websocket.dto.response.exception.ExceptionResponse
 import com.example.planning_poker_room.websocket.service.SocketService
 import org.springframework.stereotype.Component
 import org.springframework.web.socket.CloseStatus
@@ -82,10 +87,43 @@ class CustomWebSocketHandler(
     ) {
         println("${session.id} -> ${message.payload}")
 
-        val typeResponsePair = routeMessage(message, session.id)
-        val responseMode = typeResponsePair.first
-        val response = typeResponsePair.second
-        val jsonResponse = objectMapper.writeValueAsString(response)
+        var jsonResponse: String? = null
+        var responseMode: ResponseMode = ResponseMode.UNICAST_SENDER
+
+        try {
+            val typeResponsePair = routeMessage(message, session.id)
+            responseMode = typeResponsePair.first
+            val response = typeResponsePair.second
+            jsonResponse = objectMapper.writeValueAsString(response)
+        } catch (exception: NotFoundException) {
+            val response = ExceptionResponse(
+                type = when (exception) {
+                    is ParticipantNotFoundException -> WebSocketMessageType.PARTICIPANT_NOT_FOUND
+                    is ConnectionNotFoundException -> WebSocketMessageType.CONNECTION_NOT_FOUND
+                    is RoomNotFoundException -> WebSocketMessageType.ROOM_NOT_FOUND
+                    else -> WebSocketMessageType.UNKNOWN_EXCEPTION
+                },
+                code = 404,
+                message = exception.message
+            )
+            jsonResponse = objectMapper.writeValueAsString(response)
+        } catch (exception: IllegalArgumentException) {
+            val response = ExceptionResponse(
+                type = WebSocketMessageType.INVALID_MESSAGE,
+                code = 400,
+                message = exception.message ?: "Invalid request data."
+            )
+            jsonResponse = objectMapper.writeValueAsString(response)
+        } catch (exception: IllegalStateException) {
+            jsonResponse = ""
+        } catch (exception: InvalidVoteException) {
+            val response = ExceptionResponse(
+                type = WebSocketMessageType.INVALID_VOTE,
+                code = 400,
+                message = exception.message
+            )
+            jsonResponse = objectMapper.writeValueAsString(response)
+        }
 
         val connection = connectionRepository.findBySessionId(session.id)
 
@@ -131,19 +169,18 @@ class CustomWebSocketHandler(
             participantId = currentParticipant.id
         )
 
-        val responseMessage = TextMessage(
-            objectMapper.writeValueAsString(response)
-        )
+        val responseMessage = objectMapper.writeValueAsString(response)
 
-        room.participants
+        connectionRepository
+            .findByRoomId(room.id)
+            .map { it.sessionId }
             .forEach {
-                val sessionId = connectionRepository.findByParticipantId(it.id).sessionId
 
-                if (sessionId != null && sessionId != session.id) {
+                if (it != null && it != session.id) {
 
                     sessionRepository.findById(
-                        sessionId
-                    ).sendMessage(responseMessage)
+                        it
+                    ).sendMessage(TextMessage(responseMessage))
                 }
             }
     }
@@ -183,7 +220,7 @@ class CustomWebSocketHandler(
                     ResponseMode.UNICAST_SENDER,
                     RoomStateResponse.of(service.findRoomBySessionId(sessionId))
                 )
-            else -> throw RuntimeException("Invalid request type: ${request.type}")
+            else -> throw InvalidMessageException("Invalid request type: ${request.type}")
         }
     }
 

@@ -1,6 +1,7 @@
 package com.example.planning_poker_room.websocket.service
 
 import com.example.planning_poker_room.exception.unit.ConnectionAlreadyExistsException
+import com.example.planning_poker_room.exception.unit.InvalidVoteException
 import com.example.planning_poker_room.exception.unit.ParticipantNotFoundException
 import com.example.planning_poker_room.exception.unit.RoomNotFoundException
 import com.example.planning_poker_room.store.model.Connection
@@ -51,9 +52,8 @@ class SocketService(
 
         println("participant.vote invoked.")
 
-        require(vote in VOTES_ALLOWED) {
-            "Invalid value: vote. Expected: $VOTES_ALLOWED"
-        }
+        if (vote !in VOTES_ALLOWED)
+            throw InvalidVoteException("Invalid vote value: $vote. Expected: $VOTES_ALLOWED")
 
         val connection = connectionRepository.findBySessionId(sessionId)
 

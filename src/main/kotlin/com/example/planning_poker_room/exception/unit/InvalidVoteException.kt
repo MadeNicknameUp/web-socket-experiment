@@ -1,5 +1,5 @@
 package com.example.planning_poker_room.exception.unit
 
-class ConnectionNotFoundException(
+data class InvalidVoteException(
     override val message: String
-) : NotFoundException(message)
+) : RuntimeException(message)
