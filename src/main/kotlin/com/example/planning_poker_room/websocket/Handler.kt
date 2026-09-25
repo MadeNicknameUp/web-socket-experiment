@@ -3,10 +3,13 @@ package com.example.planning_poker_room.websocket
 import com.example.planning_poker_room.exception.unit.ConnectionNotFoundException
 import com.example.planning_poker_room.exception.unit.NotFoundException
 import com.example.planning_poker_room.api.service.RoomService
+import com.example.planning_poker_room.exception.unit.ConnectionAlreadyExistsException
 import com.example.planning_poker_room.exception.unit.InvalidMessageException
 import com.example.planning_poker_room.exception.unit.InvalidVoteException
 import com.example.planning_poker_room.exception.unit.ParticipantNotFoundException
 import com.example.planning_poker_room.exception.unit.RoomNotFoundException
+import com.example.planning_poker_room.exception.unit.RoomNotInVotingPhaseException
+import com.example.planning_poker_room.store.model.Room
 import com.example.planning_poker_room.store.repository.ConnectionRepository
 import com.example.planning_poker_room.store.repository.SessionRepository
 import com.example.planning_poker_room.websocket.dto.response.ExtendedParticipantDto
@@ -55,30 +58,42 @@ class CustomWebSocketHandler(
         val roomId: UUID = UUID.fromString(session.attributes["roomId"] as String?)
         val participantId: UUID = UUID.fromString(session.attributes["participantId"] as String?)
 
-        val room = service.joinRoom(
-            roomId = roomId,
-            participantId = participantId,
-            sessionId = session.id
-        )
+        try {
+            val room = service.joinRoom(
+                roomId = roomId,
+                participantId = participantId,
+                sessionId = session.id
+            )
 
-        val connection = connectionRepository.findBySessionId(session.id)
+            val connection = connectionRepository.findBySessionId(session.id)
 
-        val currentParticipant = room.participants.find { it.id == connection.participantId }
-            ?: throw ParticipantNotFoundException("No participant with id: $participantId found.")
+            val currentParticipant = room.participants.find { it.id == connection.participantId }
+                ?: throw ParticipantNotFoundException("No participant with id: $participantId found.")
 
-        val jsonJoinRoomResponse = objectMapper.writeValueAsString(JoinRoomResponse(
-            participant = ParticipantDto(
-                id = currentParticipant.id,
-                name = currentParticipant.name.value
-            )))
+            val jsonJoinRoomResponse = objectMapper.writeValueAsString(JoinRoomResponse(
+                participant = ParticipantDto(
+                    id = currentParticipant.id,
+                    name = currentParticipant.name.value
+                )))
 
-        val jsonRoomStateResponse = objectMapper.writeValueAsString(RoomStateResponse(
-            phase = room.phase.toString(),
-            participants = room.participants.map { ExtendedParticipantDto.of(it) }
-        ))
+            val jsonRoomStateResponse = objectMapper.writeValueAsString(RoomStateResponse(
+                phase = room.phase.toString(),
+                participants = room.participants.map { ExtendedParticipantDto.of(it) }
+            ))
 
-        broadcast(room.id, jsonJoinRoomResponse)
-        broadcast(room.id, jsonRoomStateResponse)
+            broadcast(room.id, jsonJoinRoomResponse)
+            unicastSender(session.id, jsonRoomStateResponse)
+        } catch (exception: ConnectionAlreadyExistsException) {
+
+            val response = ExceptionResponse(
+                type = WebSocketMessageType.ALREADY_CONNECTED,
+                message = exception.message,
+                code = 400
+            )
+            val jsonResponse = objectMapper.writeValueAsString(response)
+
+            unicastSender(session.id, jsonResponse)
+        } catch (exception: )
     }
 
     override fun handleTextMessage(
@@ -114,11 +129,16 @@ class CustomWebSocketHandler(
                 message = exception.message ?: "Invalid request data."
             )
             jsonResponse = objectMapper.writeValueAsString(response)
-        } catch (exception: IllegalStateException) {
-            jsonResponse = ""
         } catch (exception: InvalidVoteException) {
             val response = ExceptionResponse(
                 type = WebSocketMessageType.INVALID_VOTE,
+                code = 400,
+                message = exception.message
+            )
+            jsonResponse = objectMapper.writeValueAsString(response)
+        } catch (exception: RoomNotInVotingPhaseException) {
+            val response = ExceptionResponse(
+                type = WebSocketMessageType.ROOM_NOT_IN_VOTING_PHASE,
                 code = 400,
                 message = exception.message
             )

@@ -21,7 +21,6 @@ enum class WebSocketMessageType {
     INVALID_VOTE,
     NOT_HOST,
     ROOM_NOT_IN_VOTING_PHASE,
-    ROOM_NOT_REVEALED,
     ALREADY_CONNECTED,
     UNKNOWN_EXCEPTION
 }
