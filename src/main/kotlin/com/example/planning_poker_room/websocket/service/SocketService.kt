@@ -1,6 +1,7 @@
 package com.example.planning_poker_room.websocket.service
 
 import com.example.planning_poker_room.exception.unit.ConnectionAlreadyExistsException
+import com.example.planning_poker_room.exception.unit.FatalIllegalArgumentException
 import com.example.planning_poker_room.exception.unit.InvalidVoteException
 import com.example.planning_poker_room.exception.unit.ParticipantNotFoundException
 import com.example.planning_poker_room.exception.unit.RoomNotFoundException
@@ -26,9 +27,8 @@ class SocketService(
 
     fun joinRoom(roomId: UUID?, participantId: UUID?, sessionId: String): Room {
 
-        require(roomId != null && participantId != null) {
-            "Invalid input value: roomId and participantId must not be null"
-        }
+        if (roomId == null || participantId == null)
+            throw FatalIllegalArgumentException("Invalid input value: roomId and participantId must not be null")
 
         val room = roomRepository.findById(roomId)
             ?: throw RoomNotFoundException("Room with id $roomId does not exist")
@@ -67,9 +67,8 @@ class SocketService(
         val room = roomRepository.findById(connection.roomId)
             ?: throw RoomNotFoundException("Room with id: ${connection.roomId} does not exist.")
 
-        check(room.phase == RoomState.VOTING) {
-            "Invalid state: Room is not VOTING yet/anymore."
-        }
+        if (room.phase != RoomState.VOTING)
+            throw RoomNotInVotingPhaseException("Invalid state: Room is not VOTING yet/anymore.")
 
         val participant: Participant = room.participants.find { connection.participantId == it.id }
             ?: throw ParticipantNotFoundException("Participant with id: ${connection.participantId} does not exist.")
@@ -89,10 +88,10 @@ class SocketService(
 
         // TODO: Check if session owner is a host.
 
-        // TODO: It would be nice, if this state change was also managed by Room. (Simple method on domain object?)
         if (room.phase != RoomState.VOTING)
             throw RoomNotInVotingPhaseException("Invalid state: Room is not VOTING yet/anymore.")
 
+        // TODO: It would be nice, if this state change was also managed by Room. (Simple method on domain object?)
         room.phase = RoomState.REVEALED
 
         CURRENT_VERSION.incrementAndGet()
