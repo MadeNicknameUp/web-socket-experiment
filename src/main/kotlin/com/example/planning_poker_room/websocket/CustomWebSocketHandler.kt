@@ -30,7 +30,7 @@ class CustomWebSocketHandler(
     private val service: SocketService,
     private val router: RequestRouter,
     private val sender: MessageSender,
-    private val handler: ExceptionFilterChain
+    private val exceptionHandler: ExceptionFilterChain
 ) : TextWebSocketHandler() {
 
     override fun afterConnectionEstablished(session: WebSocketSession) {
@@ -41,16 +41,14 @@ class CustomWebSocketHandler(
         val roomId: UUID = extractAttributeByName(session, "roomId")
         val participantId: UUID = extractAttributeByName(session, "participantId")
 
-        val filterResult = handler.execute {
+        val filterResult = exceptionHandler.execute {
             val room = service.joinRoom(
                 roomId = roomId,
                 participantId = participantId,
                 sessionId = session.id
             )
 
-            val connection = connectionRepository.findBySessionId(session.id)
-
-            val currentParticipant = room.participants.find { it.id == connection.participantId }
+            val currentParticipant = room.findParticipantById(participantId)
                 ?: throw ParticipantNotFoundException("No participant with id: $participantId found.")
 
             JoinRoomResponse(
@@ -106,7 +104,7 @@ class CustomWebSocketHandler(
 
         val connection = connectionRepository.findBySessionId(session.id)
 
-        val filterResult = handler.execute {
+        val filterResult = exceptionHandler.execute {
             val typeResponsePair = router.convertAndRoute(message, session.id)
             responseMode = typeResponsePair.first
             typeResponsePair.second

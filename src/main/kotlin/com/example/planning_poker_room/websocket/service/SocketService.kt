@@ -1,6 +1,5 @@
 package com.example.planning_poker_room.websocket.service
 
-import com.example.planning_poker_room.exception.unit.ConnectionAlreadyExistsException
 import com.example.planning_poker_room.exception.unit.FatalIllegalArgumentException
 import com.example.planning_poker_room.exception.unit.InvalidVoteException
 import com.example.planning_poker_room.exception.unit.ParticipantNotFoundException
@@ -33,13 +32,7 @@ class SocketService(
         val room = roomRepository.findById(roomId)
             ?: throw RoomNotFoundException("Room with id $roomId does not exist")
 
-        // TODO: Room must now contain this action (e.g. via extension function).
-        val participant = room.participants.find { it.id == participantId }
-            ?: throw ParticipantNotFoundException("Participant with id $participantId does not exist.")
-
-        if (participant.connected) {
-            throw ConnectionAlreadyExistsException("Participant is already connected.")
-        }
+        room.connect(participantId)
 
         connectionRepository.save(Connection(
             participantId = participantId,
@@ -48,7 +41,6 @@ class SocketService(
             )
         )
 
-        participant.connected = true
         CURRENT_VERSION.incrementAndGet()
 
         return room
@@ -70,10 +62,11 @@ class SocketService(
         if (room.phase != RoomState.VOTING)
             throw RoomNotInVotingPhaseException("Invalid state: Room is not VOTING yet/anymore.")
 
-        val participant: Participant = room.participants.find { connection.participantId == it.id }
+        val participant: Participant = room.findParticipantById(connection.participantId)
             ?: throw ParticipantNotFoundException("Participant with id: ${connection.participantId} does not exist.")
 
         participant.vote = vote
+
         CURRENT_VERSION.incrementAndGet()
 
         return participant.id
@@ -88,11 +81,7 @@ class SocketService(
 
         // TODO: Check if session owner is a host.
 
-        if (room.phase != RoomState.VOTING)
-            throw RoomNotInVotingPhaseException("Invalid state: Room is not VOTING yet/anymore.")
-
-        // TODO: It would be nice, if this state change was also managed by Room. (Simple method on domain object?)
-        room.phase = RoomState.REVEALED
+        room.reveal()
 
         CURRENT_VERSION.incrementAndGet()
     }
@@ -106,9 +95,7 @@ class SocketService(
 
         // TODO: Check if session owner is a host.
 
-        // TODO: It would be nice, if this state change was also managed by Room. (Simple method on domain object?)
-        room.phase = RoomState.VOTING
-        room.participants.forEach { it.vote = null }
+        room.resetRound()
 
         CURRENT_VERSION.incrementAndGet()
     }
@@ -121,12 +108,9 @@ class SocketService(
 
         connection.sessionId = null
 
-        val currentParticipant = room.participants.find { it.id == connection.participantId }
-            ?: throw ParticipantNotFoundException("No participant with id: ${connection.participantId} found.")
+        room.disconnect(connection.participantId)
 
-        currentParticipant.connected = false
-
-        return Pair(room.id, currentParticipant.id)
+        return Pair(room.id, connection.participantId)
     }
 
     fun findRoomBySessionId(sessionId: String): Room {
