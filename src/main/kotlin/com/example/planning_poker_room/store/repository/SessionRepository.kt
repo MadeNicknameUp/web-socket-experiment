@@ -4,8 +4,6 @@ import org.springframework.web.socket.WebSocketSession
 
 interface SessionRepository {
 
-    fun findAllExceptForById(sessionId: String): List<WebSocketSession>
-
     fun findAll(): List<WebSocketSession>
 
     fun findById(sessionId: String): WebSocketSession

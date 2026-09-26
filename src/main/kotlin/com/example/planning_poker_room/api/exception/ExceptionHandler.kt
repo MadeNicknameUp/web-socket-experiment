@@ -31,7 +31,7 @@ class ExceptionHandler {
             .body(RestErrorDto(
             code = HttpStatus.NOT_FOUND.value(),
             message = exception.message,
-            path = request.pathInfo
+            path = request.servletPath
         ))
     }
 
@@ -40,7 +40,7 @@ class ExceptionHandler {
         IllegalStateException::class,
         ConnectionAlreadyExistsException::class,
     ])
-    fun handleIllegalException(
+    fun handleBadRequestException(
         request: HttpServletRequest,
         exception: RuntimeException
     ) : ResponseEntity<RestErrorDto> {
@@ -50,7 +50,7 @@ class ExceptionHandler {
             .body(RestErrorDto(
                 code = HttpStatus.BAD_REQUEST.value(),
                 message = exception.message,
-                path = request.pathInfo
+                path = request.servletPath
             ))
     }
 }

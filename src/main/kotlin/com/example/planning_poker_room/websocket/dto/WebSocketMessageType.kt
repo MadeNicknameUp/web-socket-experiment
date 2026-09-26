@@ -1,5 +1,6 @@
 package com.example.planning_poker_room.websocket.dto
 
+// TODO: Split this enum up: WebSocketMessageRequestType, WebSocketMessageResponseType, WebSocketMessageExceptionType
 enum class WebSocketMessageType {
     // --- Request
     PING,
@@ -18,6 +19,7 @@ enum class WebSocketMessageType {
     CONNECTION_NOT_FOUND,
     ROOM_NOT_FOUND,
     INVALID_MESSAGE,
+    INVALID_ARGUMENT,
     INVALID_VOTE,
     NOT_HOST,
     ROOM_NOT_IN_VOTING_PHASE,

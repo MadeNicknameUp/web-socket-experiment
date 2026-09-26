@@ -26,15 +26,9 @@ class RoomController(
         return ResponseEntity
             .status(HttpStatus.CREATED)
             .body(
-                CreateRoomResponse.of(roomService.createRoom(request))
+                CreateRoomResponse.of(roomService.createRoom(request.name))
             )
     }
-
-//    @GetMapping("/{roomId}")
-//    fun fetchRoomById(@PathVariable roomId: UUID): ResponseEntity<String> {
-//
-//        return ResponseEntity.ok("Room with id $roomId not found.")
-//    }
 
     @PostMapping("/{roomId}/participants")
     fun joinRoom(@PathVariable roomId: UUID, @RequestBody request: JoinRoomRequest): ResponseEntity<JoinRoomResponse> {

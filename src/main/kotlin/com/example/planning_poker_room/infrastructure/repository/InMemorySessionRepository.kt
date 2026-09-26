@@ -11,9 +11,6 @@ class InMemorySessionRepository : SessionRepository {
 
     private val sessions: MutableMap<String, WebSocketSession> = ConcurrentHashMap()
 
-    override fun findAllExceptForById(sessionId: String): List<WebSocketSession> =
-        sessions.filterNot { it.key.equals(sessionId) } .values.toList()
-
     override fun findAll(): List<WebSocketSession> =
         sessions.values.toList()
 

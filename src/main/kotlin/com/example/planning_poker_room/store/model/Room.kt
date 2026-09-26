@@ -8,7 +8,6 @@ class Room private constructor(
 //    val hostParticipantId: UUID,
     val participants: MutableList<Participant>,
     var phase: RoomState,
-    var round: Round?
 ) {
 
     companion object {
@@ -19,7 +18,6 @@ class Room private constructor(
                 name = name,
                 phase = RoomState.VOTING,
                 participants = mutableListOf(),
-                round = null
             )
         }
     }

@@ -1,6 +1,5 @@
 package com.example.planning_poker_room.api.service
 
-import com.example.planning_poker_room.api.dto.CreateRoomRequest
 import com.example.planning_poker_room.exception.unit.RoomNotFoundException
 import com.example.planning_poker_room.infrastructure.util.addParticipant
 import com.example.planning_poker_room.store.model.Participant
@@ -16,9 +15,9 @@ class RoomService(
     private val roomRepository: RoomRepository
 ) {
 
-    fun createRoom(request: CreateRoomRequest): Room =
+    fun createRoom(roomName: String): Room =
         roomRepository.save(
-            Room.create(RoomName(request.name))
+            Room.create(RoomName(roomName))
         )
 
     fun getRoomById(id: UUID): Room
