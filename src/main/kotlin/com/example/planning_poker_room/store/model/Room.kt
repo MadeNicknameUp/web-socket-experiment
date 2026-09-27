@@ -8,7 +8,7 @@ import java.util.UUID
 class Room private constructor(
     val id: UUID,
     val name: RoomName,
-//    val hostParticipantId: UUID,
+    val hostParticipantId: UUID,
     val participants: MutableList<Participant>,
     var phase: RoomState,
 ) {
@@ -53,6 +53,7 @@ class Room private constructor(
                 id = UUID.randomUUID(),
                 name = name,
                 phase = RoomState.VOTING,
+                hostParticipantId = UUID.randomUUID(),
                 participants = mutableListOf(),
             )
         }

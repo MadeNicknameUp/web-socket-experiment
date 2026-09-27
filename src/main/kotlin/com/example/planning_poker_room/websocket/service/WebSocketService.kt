@@ -2,6 +2,7 @@ package com.example.planning_poker_room.websocket.service
 
 import com.example.planning_poker_room.exception.unit.FatalIllegalArgumentException
 import com.example.planning_poker_room.exception.unit.InvalidVoteException
+import com.example.planning_poker_room.exception.unit.NotAuthorizedException
 import com.example.planning_poker_room.exception.unit.ParticipantNotFoundException
 import com.example.planning_poker_room.exception.unit.RoomNotFoundException
 import com.example.planning_poker_room.exception.unit.RoomNotInVotingPhaseException
@@ -11,20 +12,25 @@ import com.example.planning_poker_room.store.model.Room
 import com.example.planning_poker_room.store.model.RoomState
 import com.example.planning_poker_room.store.repository.ConnectionRepository
 import com.example.planning_poker_room.store.repository.RoomRepository
+import io.github.oshai.kotlinlogging.KotlinLogging
 import org.springframework.stereotype.Service
 import java.util.concurrent.atomic.AtomicLong
 import java.util.UUID
+
+private val logger = KotlinLogging.logger {}
 
 var CURRENT_VERSION: AtomicLong = AtomicLong(0)
 val VOTES_ALLOWED = listOf(1, 2, 3, 5, 8, 13, 21)
 
 @Service
-class SocketService(
+class WebSocketService(
     private val connectionRepository: ConnectionRepository,
     private val roomRepository: RoomRepository
 ) {
 
     fun joinRoom(roomId: UUID?, participantId: UUID?, sessionId: String): Room {
+
+        logger.trace { "room.join invoked." }
 
         if (roomId == null || participantId == null)
             throw FatalIllegalArgumentException("Invalid input value: roomId and participantId must not be null")
@@ -48,8 +54,7 @@ class SocketService(
 
     fun vote(vote: Int, sessionId: String): UUID {
 
-        // TODO: Nice, but replace with Slf4j when refactored.
-        println("participant.vote invoked.")
+        logger.trace { "participant.vote invoked." }
 
         if (vote !in VOTES_ALLOWED)
             throw InvalidVoteException("Invalid vote value: $vote. Expected: $VOTES_ALLOWED")
@@ -74,12 +79,15 @@ class SocketService(
 
     fun reveal(sessionId: String) {
 
+        logger.trace { "room.reveal invoked." }
+
         val connection = connectionRepository.findBySessionId(sessionId)
 
         val room = roomRepository.findById(connection.roomId)
             ?: throw RoomNotFoundException("Room with id: ${connection.roomId} does not exist.")
 
-        // TODO: Check if session owner is a host.
+        if (connection.participantId != room.hostParticipantId)
+            throw NotAuthorizedException("You are not authorized to reveal this room.")
 
         room.reveal()
 
@@ -88,12 +96,15 @@ class SocketService(
 
     fun roundReset(sessionId: String) {
 
+        logger.trace { "room.reset invoked." }
+
         val connection = connectionRepository.findBySessionId(sessionId)
 
         val room = roomRepository.findById(connection.roomId)
             ?: throw RoomNotFoundException("Room with id: ${connection.roomId} does not exist.")
 
-        // TODO: Check if session owner is a host.
+        if (connection.participantId != room.hostParticipantId)
+            throw NotAuthorizedException("You are not authorized to reveal this room.")
 
         room.resetRound()
 
@@ -101,6 +112,9 @@ class SocketService(
     }
 
     fun leaveRoom(sessionId: String): Pair<UUID, UUID> {
+
+        logger.trace { "participant.leave invoked." }
+
         val connection = connectionRepository.findBySessionId(sessionId)
 
         val room = roomRepository.findById(connection.roomId)

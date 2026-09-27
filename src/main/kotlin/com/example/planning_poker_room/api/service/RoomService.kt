@@ -15,10 +15,15 @@ class RoomService(
     private val roomRepository: RoomRepository
 ) {
 
-    fun createRoom(roomName: String): Room =
+    fun createRoom(roomName: String, hostName: String): Room =
         roomRepository.save(
             Room.create(RoomName(roomName))
-        )
+        ).apply {
+            addParticipant(Participant.create(
+                hostParticipantId,
+                ParticipantName(hostName)
+            ))
+        }
 
     fun getRoomById(id: UUID): Room
         = roomRepository.findById(id) ?: throw RoomNotFoundException("Room with id: $id does not exit.")

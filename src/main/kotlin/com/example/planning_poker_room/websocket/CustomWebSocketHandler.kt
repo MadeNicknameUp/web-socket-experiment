@@ -11,7 +11,8 @@ import com.example.planning_poker_room.websocket.dto.response.RoomStateResponse
 import com.example.planning_poker_room.websocket.exception.ExceptionFilterChain
 import com.example.planning_poker_room.websocket.exception.output.FilterResult
 import com.example.planning_poker_room.websocket.service.CURRENT_VERSION
-import com.example.planning_poker_room.websocket.service.SocketService
+import com.example.planning_poker_room.websocket.service.WebSocketService
+import io.github.oshai.kotlinlogging.KotlinLogging
 import org.springframework.stereotype.Component
 import org.springframework.web.socket.CloseStatus
 import org.springframework.web.socket.TextMessage
@@ -20,14 +21,15 @@ import org.springframework.web.socket.handler.TextWebSocketHandler
 import tools.jackson.databind.ObjectMapper
 import java.util.UUID
 
-// TODO: Replace and improve logging. (Slf4j)
+private val logger = KotlinLogging.logger {}
+
 @Component
 class CustomWebSocketHandler(
     private val connectionRepository: ConnectionRepository,
     private val sessionRepository: SessionRepository,
     private val objectMapper: ObjectMapper,
     private val roomService: RoomService,
-    private val service: SocketService,
+    private val service: WebSocketService,
     private val router: RequestRouter,
     private val sender: MessageSender,
     private val exceptionHandler: ExceptionFilterChain
@@ -36,7 +38,7 @@ class CustomWebSocketHandler(
     override fun afterConnectionEstablished(session: WebSocketSession) {
         sessionRepository.save(session)
 
-        println("CONNECTED ${session.id}")
+        logger.debug { "CONNECTED ${session.id}" }
 
         val roomId: UUID = extractAttributeByName(session, "roomId")
         val participantId: UUID = extractAttributeByName(session, "participantId")
@@ -98,7 +100,7 @@ class CustomWebSocketHandler(
         session: WebSocketSession,
         message: TextMessage
     ) {
-        println("${session.id} -> ${message.payload}")
+        logger.debug { ("${session.id} -> ${message.payload}") }
 
         var responseMode: ResponseMode = ResponseMode.UNICAST_SENDER
 
@@ -143,7 +145,7 @@ class CustomWebSocketHandler(
     ) {
         sessionRepository.remove(session)
 
-        println("DISCONNECTED ${session.id}: $status")
+        logger.debug { "DISCONNECTED ${session.id}: $status" }
 
         val roomAndParticipant = service.leaveRoom(session.id)
         val roomId = roomAndParticipant.first
@@ -165,6 +167,6 @@ class CustomWebSocketHandler(
 
     private fun extractAttributeByName(session: WebSocketSession, name: String): UUID =
         UUID.fromString(session.attributes[name] as String?).apply {
-            println("Extracted attribute $name: $this")
+            logger.debug { "Extracted attribute $name: $this" }
         }
 }

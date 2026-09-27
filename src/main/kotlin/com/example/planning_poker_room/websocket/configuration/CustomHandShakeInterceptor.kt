@@ -1,11 +1,14 @@
 package com.example.planning_poker_room.websocket.configuration
 
+import io.github.oshai.kotlinlogging.KotlinLogging
 import org.springframework.http.server.ServerHttpRequest
 import org.springframework.http.server.ServerHttpResponse
 import org.springframework.http.server.ServletServerHttpRequest
 import org.springframework.web.socket.WebSocketHandler
 import org.springframework.web.socket.server.HandshakeInterceptor
 import java.lang.Exception
+
+private val logger = KotlinLogging.logger {}
 
 class CustomHandShakeInterceptor : HandshakeInterceptor {
 
@@ -21,7 +24,7 @@ class CustomHandShakeInterceptor : HandshakeInterceptor {
 
             val path: String = httpRequest.requestURI
 
-            println("PATH: $path")
+            logger.debug { "PATH: $path" }
 
             val roomId = path.substringAfterLast("/")
             val participantId = httpRequest.getParameter("participantId")
@@ -39,6 +42,6 @@ class CustomHandShakeInterceptor : HandshakeInterceptor {
         wsHandler: WebSocketHandler,
         exception: Exception?
     ) {
-        return;
+        return
     }
 }

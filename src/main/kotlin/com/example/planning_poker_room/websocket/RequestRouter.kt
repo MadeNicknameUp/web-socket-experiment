@@ -16,7 +16,7 @@ import com.example.planning_poker_room.websocket.dto.response.RoundResetResponse
 import com.example.planning_poker_room.websocket.dto.response.RoundRevealedResponse
 import com.example.planning_poker_room.websocket.dto.response.SimpleResponse
 import com.example.planning_poker_room.websocket.service.CURRENT_VERSION
-import com.example.planning_poker_room.websocket.service.SocketService
+import com.example.planning_poker_room.websocket.service.WebSocketService
 import org.springframework.stereotype.Component
 import org.springframework.web.socket.TextMessage
 import tools.jackson.databind.ObjectMapper
@@ -26,7 +26,7 @@ class RequestRouter(
     private val connectionRepository: ConnectionRepository,
     private val objectMapper: ObjectMapper,
     private val roomService: RoomService,
-    private val service: SocketService
+    private val service: WebSocketService
 ) {
 
     fun convertAndRoute(message: TextMessage, sessionId: String) : Pair<ResponseMode, WebSocketMessage> {

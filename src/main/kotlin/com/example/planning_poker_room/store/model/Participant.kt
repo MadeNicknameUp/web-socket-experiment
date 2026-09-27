@@ -19,5 +19,15 @@ class Participant private constructor(
                 vote = null
             )
         }
+
+        fun create(id: UUID, name: ParticipantName): Participant {
+
+            return Participant(
+                id = id,
+                name = name,
+                connected = false,
+                vote = null
+            )
+        }
     }
 }

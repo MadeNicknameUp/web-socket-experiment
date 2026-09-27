@@ -26,7 +26,7 @@ class RoomController(
         return ResponseEntity
             .status(HttpStatus.CREATED)
             .body(
-                CreateRoomResponse.of(roomService.createRoom(request.name))
+                CreateRoomResponse.of(roomService.createRoom(request.roomName, request.hostName))
             )
     }
 
