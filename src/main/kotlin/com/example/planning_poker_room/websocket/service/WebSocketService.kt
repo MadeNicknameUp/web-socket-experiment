@@ -14,18 +14,16 @@ import com.example.planning_poker_room.store.repository.ConnectionRepository
 import com.example.planning_poker_room.store.repository.RoomRepository
 import io.github.oshai.kotlinlogging.KotlinLogging
 import org.springframework.stereotype.Service
-import java.util.concurrent.atomic.AtomicLong
 import java.util.UUID
 
 private val logger = KotlinLogging.logger {}
 
-var CURRENT_VERSION: AtomicLong = AtomicLong(0)
 val VOTES_ALLOWED = listOf(1, 2, 3, 5, 8, 13, 21)
 
 @Service
 class WebSocketService(
     private val connectionRepository: ConnectionRepository,
-    private val roomRepository: RoomRepository
+    private val roomRepository: RoomRepository,
 ) {
 
     fun joinRoom(roomId: UUID?, participantId: UUID?, sessionId: String): Room {
@@ -46,8 +44,6 @@ class WebSocketService(
             sessionId = sessionId
             )
         )
-
-        CURRENT_VERSION.incrementAndGet()
 
         return room
     }
@@ -72,7 +68,7 @@ class WebSocketService(
 
         participant.vote = vote
 
-        CURRENT_VERSION.incrementAndGet()
+        room.incrementVersion()
 
         return participant.id
     }
@@ -90,8 +86,6 @@ class WebSocketService(
             throw NotAuthorizedException("You are not authorized to reveal this room.")
 
         room.reveal()
-
-        CURRENT_VERSION.incrementAndGet()
     }
 
     fun roundReset(sessionId: String) {
@@ -107,8 +101,6 @@ class WebSocketService(
             throw NotAuthorizedException("You are not authorized to reveal this room.")
 
         room.resetRound()
-
-        CURRENT_VERSION.incrementAndGet()
     }
 
     fun leaveRoom(sessionId: String): Pair<UUID, UUID> {
