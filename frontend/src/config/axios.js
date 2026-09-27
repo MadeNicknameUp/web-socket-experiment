@@ -1,11 +1,9 @@
 import axios from "axios";
-import config from "./app-config";
+import { config } from "./app-config";
 
-const instance = axios.create({
+export const httpClientInstance = axios.create({
     baseURL: config.ApiBaseUrl,
     headers: {
         'Content-Type': 'application/json'
     }
-})
-
-export default setupYourInterceptors(instance)
+});

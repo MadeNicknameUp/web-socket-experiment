@@ -1,14 +1,16 @@
-import axios from "axios";
+import { httpClientInsatce } from "src/config/axios.js";
+
+const httpClient = httpClientInstance();
 
 export const createRoom = async (roomName, hostName) => {
-    return axios.post(
+    return httpClient.post(
         '/api/rooms', 
         { roomName, hostName }
     )
 }
 
 export const joinRoom = async (roomId, userName) => {
-    return axios.post(
+    return httpClient.post(
         `/api/rooms/${roomId}/participants`, 
         { userName }
     )
