@@ -28,7 +28,7 @@ class Room private constructor(
 
     fun disconnect(participantId: UUID) {
         val currentParticipant = findParticipantById(participantId)
-            ?: throw ParticipantNotFoundException("No participant with id: ${participantId} found.")
+            ?: throw ParticipantNotFoundException("No participant with id: $participantId found.")
 
         currentParticipant.connected = false
         incrementVersion()
