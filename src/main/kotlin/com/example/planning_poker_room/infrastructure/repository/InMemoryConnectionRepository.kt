@@ -12,11 +12,10 @@ class InMemoryConnectionRepository : ConnectionRepository {
 
     private val connections: MutableMap<UUID, Connection> = ConcurrentHashMap()
 
-    override fun findBySessionId(sessionId: String): Connection =
+    override fun findBySessionId(sessionId: String): Connection? =
         connections.values.find { it.sessionId.equals(sessionId) }
-            ?: throw ConnectionNotFoundException("Connection for session_id: $sessionId does not exist.")
 
-    override fun findByParticipantId(participantId: UUID): Connection =
+    override fun findByParticipantId(participantId: UUID): Connection? =
         connections[participantId]
             ?: throw ConnectionNotFoundException("Connection for participant_id: $participantId does not exist.")
 

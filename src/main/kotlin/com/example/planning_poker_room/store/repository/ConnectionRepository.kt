@@ -5,9 +5,9 @@ import java.util.UUID
 
 interface ConnectionRepository {
 
-    fun findBySessionId(sessionId: String): Connection
+    fun findBySessionId(sessionId: String): Connection?
 
-    fun findByParticipantId(participantId: UUID): Connection
+    fun findByParticipantId(participantId: UUID): Connection?
 
     fun findByRoomId(roomId: UUID): List<Connection>
 

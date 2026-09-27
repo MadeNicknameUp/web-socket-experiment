@@ -1,6 +1,7 @@
 package com.example.planning_poker_room.websocket.handler
 
 import com.example.planning_poker_room.api.service.RoomService
+import com.example.planning_poker_room.exception.unit.ConnectionNotFoundException
 import com.example.planning_poker_room.exception.unit.ParticipantNotFoundException
 import com.example.planning_poker_room.store.repository.ConnectionRepository
 import com.example.planning_poker_room.store.repository.SessionRepository
@@ -107,6 +108,7 @@ class CustomWebSocketHandler(
         var responseMode: ResponseMode = ResponseMode.UNICAST_SENDER
 
         val connection = connectionRepository.findBySessionId(session.id)
+            ?: throw ConnectionNotFoundException("Connection for session_id: ${session.id} does not exist.")
 
         val filterResult = exceptionHandler.execute {
             val typeResponsePair = router.convertAndRoute(message, session.id)
@@ -153,18 +155,20 @@ class CustomWebSocketHandler(
         val room = roomAndParticipant.first
         val participantId = roomAndParticipant.second
 
-        val response = LeftRoomResponse(
-            participantId = participantId,
-            version = room.version
-        )
+        if (room != null && participantId != null) {
+            val response = LeftRoomResponse(
+                participantId = participantId,
+                version = room.version
+            )
 
-        val jsonResponse = objectMapper.writeValueAsString(response)
+            val jsonResponse = objectMapper.writeValueAsString(response)
 
-        sender.multicastExceptSender(
-            room.id,
-            session.id,
-            jsonResponse
-        )
+            sender.multicastExceptSender(
+                room.id,
+                session.id,
+                jsonResponse
+            )
+        }
     }
 
     private fun extractAttributeByName(session: WebSocketSession, name: String): UUID =

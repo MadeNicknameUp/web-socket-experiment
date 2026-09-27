@@ -11,7 +11,7 @@ class InMemoryRoomRepository : RoomRepository {
 
     private val rooms: MutableMap<UUID, Room> = ConcurrentHashMap()
 
-    override fun findById(id: UUID): Room? = rooms[id]
+    override fun findById(id: UUID?): Room? = rooms[id]
 
     override fun save(room: Room): Room =
         room.also { rooms[room.id] = room }

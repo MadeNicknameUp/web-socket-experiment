@@ -1,6 +1,7 @@
 package com.example.planning_poker_room.websocket.infrastructure
 
 import com.example.planning_poker_room.api.service.RoomService
+import com.example.planning_poker_room.exception.unit.ConnectionNotFoundException
 import com.example.planning_poker_room.exception.unit.InvalidMessageException
 import com.example.planning_poker_room.store.repository.ConnectionRepository
 import com.example.planning_poker_room.websocket.dto.WebSocketMessage
@@ -62,12 +63,16 @@ class RequestRouter(
                     ResponseMode.BROADCAST, RoundRevealedResponse(
                     type = WebSocketMessageType.ROUND_REVEALED,
                     version = room.version,
-                    votes = roomService.getRoomById(connectionRepository.findBySessionId(sessionId).roomId).participants.associate {
-                        Pair(
-                            it.id,
-                            it.vote
-                        )
-                    }
+                    votes = roomService
+                        .getRoomById(
+                            connectionRepository.findBySessionId(sessionId)?.roomId
+                                ?: throw ConnectionNotFoundException("Connection for session_id: $sessionId does not exist.")
+                        ).participants.associate {
+                            Pair(
+                                it.id,
+                                it.vote
+                            )
+                        }
                 ))
             }
 

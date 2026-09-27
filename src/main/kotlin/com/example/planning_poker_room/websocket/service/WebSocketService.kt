@@ -1,5 +1,6 @@
 package com.example.planning_poker_room.websocket.service
 
+import com.example.planning_poker_room.exception.unit.ConnectionNotFoundException
 import com.example.planning_poker_room.exception.unit.FatalIllegalArgumentException
 import com.example.planning_poker_room.exception.unit.InvalidVoteException
 import com.example.planning_poker_room.exception.unit.NotAuthorizedException
@@ -56,6 +57,7 @@ class WebSocketService(
             throw InvalidVoteException("Invalid vote value: $vote. Expected: $VOTES_ALLOWED")
 
         val connection = connectionRepository.findBySessionId(sessionId)
+            ?: throw ConnectionNotFoundException("Connection for session_id: $sessionId does not exist.")
 
         val room = roomRepository.findById(connection.roomId)
             ?: throw RoomNotFoundException("Room with id: ${connection.roomId} does not exist.")
@@ -78,6 +80,7 @@ class WebSocketService(
         logger.trace { "room.reveal invoked." }
 
         val connection = connectionRepository.findBySessionId(sessionId)
+            ?: throw ConnectionNotFoundException("Connection for session_id: $sessionId does not exist.")
 
         val room = roomRepository.findById(connection.roomId)
             ?: throw RoomNotFoundException("Room with id: ${connection.roomId} does not exist.")
@@ -95,6 +98,7 @@ class WebSocketService(
         logger.trace { "room.reset invoked." }
 
         val connection = connectionRepository.findBySessionId(sessionId)
+            ?: throw ConnectionNotFoundException("Connection for session_id: $sessionId does not exist.")
 
         val room = roomRepository.findById(connection.roomId)
             ?: throw RoomNotFoundException("Room with id: ${connection.roomId} does not exist.")
@@ -107,25 +111,28 @@ class WebSocketService(
         return room
     }
 
-    fun leaveRoom(sessionId: String): Pair<Room, UUID> {
+    fun leaveRoom(sessionId: String): Pair<Room?, UUID?> {
 
         logger.trace { "participant.leave invoked." }
 
         val connection = connectionRepository.findBySessionId(sessionId)
 
-        val room = roomRepository.findById(connection.roomId)
-            ?: throw RoomNotFoundException("Room with id: ${connection.roomId} does not exist.")
+        val room = roomRepository.findById(connection?.roomId)
 
-        connection.sessionId = null
+        if (connection != null && room != null) {
 
-        room.disconnect(connection.participantId)
+            connection.sessionId = null
 
-        return Pair(room, connection.participantId)
+            room.disconnect(connection.participantId)
+        }
+
+        return Pair(room, connection?.participantId)
     }
 
     fun findRoomBySessionId(sessionId: String): Room {
 
         val connection = connectionRepository.findBySessionId(sessionId)
+            ?: throw ConnectionNotFoundException("Connection for session_id: $sessionId does not exist.")
 
         val room = roomRepository.findById(connection.roomId)
             ?: throw RoomNotFoundException("Room with id: ${connection.roomId} does not exist.")
