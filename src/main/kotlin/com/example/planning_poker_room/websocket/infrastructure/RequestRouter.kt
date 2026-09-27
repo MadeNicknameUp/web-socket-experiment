@@ -15,7 +15,6 @@ import com.example.planning_poker_room.websocket.dto.response.RoomStateResponse
 import com.example.planning_poker_room.websocket.dto.response.RoundResetResponse
 import com.example.planning_poker_room.websocket.dto.response.RoundRevealedResponse
 import com.example.planning_poker_room.websocket.dto.response.SimpleResponse
-import com.example.planning_poker_room.websocket.service.CURRENT_VERSION
 import com.example.planning_poker_room.websocket.service.WebSocketService
 import org.springframework.stereotype.Component
 import org.springframework.web.socket.TextMessage
@@ -40,19 +39,29 @@ class RequestRouter(
             return Pair(ResponseMode.UNICAST_SENDER, SimpleResponse(WebSocketMessageType.PONG))
 
         return when (request) {
-            is VoteRequest -> Pair(
-                ResponseMode.MULTICAST_EXCEPT_SENDER, ParticipantVotedResponse(
-                    version = CURRENT_VERSION,
-                    participantId = service.vote(request.vote, sessionId)
+            is VoteRequest -> {
+
+                val roomAndParticipantId = service.vote(request.vote, sessionId)
+                val room = roomAndParticipantId.first
+                val participantId = roomAndParticipantId.second
+
+                Pair(
+                    ResponseMode.MULTICAST_EXCEPT_SENDER, ParticipantVotedResponse(
+                        version = room.version,
+                        participantId = participantId
+                    )
                 )
-            )
+            }
 
             is RevealRequest -> {
+
+                val room = service.reveal(sessionId)
+
                 service.reveal(sessionId)
                 Pair(
                     ResponseMode.BROADCAST, RoundRevealedResponse(
                     type = WebSocketMessageType.ROUND_REVEALED,
-                    version = CURRENT_VERSION,
+                    version = room.version,
                     votes = roomService.getRoomById(connectionRepository.findBySessionId(sessionId).roomId).participants.associate {
                         Pair(
                             it.id,
@@ -63,10 +72,10 @@ class RequestRouter(
             }
 
             is ResetRoundRequest -> {
-                service.roundReset(sessionId)
+                val room = service.roundReset(sessionId)
                 Pair(
                     ResponseMode.BROADCAST, RoundResetResponse(
-                        version = CURRENT_VERSION
+                        version = room.version
                     )
                 )
             }

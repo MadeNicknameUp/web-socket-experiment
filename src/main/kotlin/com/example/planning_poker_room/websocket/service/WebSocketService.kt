@@ -48,7 +48,7 @@ class WebSocketService(
         return room
     }
 
-    fun vote(vote: Int, sessionId: String): UUID {
+    fun vote(vote: Int, sessionId: String): Pair<Room, UUID> {
 
         logger.trace { "participant.vote invoked." }
 
@@ -70,10 +70,10 @@ class WebSocketService(
 
         room.incrementVersion()
 
-        return participant.id
+        return Pair(room, participant.id)
     }
 
-    fun reveal(sessionId: String) {
+    fun reveal(sessionId: String): Room {
 
         logger.trace { "room.reveal invoked." }
 
@@ -86,9 +86,11 @@ class WebSocketService(
             throw NotAuthorizedException("You are not authorized to reveal this room.")
 
         room.reveal()
+
+        return room
     }
 
-    fun roundReset(sessionId: String) {
+    fun roundReset(sessionId: String): Room {
 
         logger.trace { "room.reset invoked." }
 
@@ -101,9 +103,11 @@ class WebSocketService(
             throw NotAuthorizedException("You are not authorized to reveal this room.")
 
         room.resetRound()
+
+        return room
     }
 
-    fun leaveRoom(sessionId: String): Pair<UUID, UUID> {
+    fun leaveRoom(sessionId: String): Pair<Room, UUID> {
 
         logger.trace { "participant.leave invoked." }
 
@@ -116,7 +120,7 @@ class WebSocketService(
 
         room.disconnect(connection.participantId)
 
-        return Pair(room.id, connection.participantId)
+        return Pair(room, connection.participantId)
     }
 
     fun findRoomBySessionId(sessionId: String): Room {

@@ -13,7 +13,6 @@ import com.example.planning_poker_room.websocket.exception.ExceptionFilterChain
 import com.example.planning_poker_room.websocket.exception.output.FilterResult
 import com.example.planning_poker_room.websocket.infrastructure.MessageSender
 import com.example.planning_poker_room.websocket.infrastructure.RequestRouter
-import com.example.planning_poker_room.websocket.service.CURRENT_VERSION
 import com.example.planning_poker_room.websocket.service.WebSocketService
 import io.github.oshai.kotlinlogging.KotlinLogging
 import org.springframework.stereotype.Component
@@ -57,7 +56,7 @@ class CustomWebSocketHandler(
                 ?: throw ParticipantNotFoundException("No participant with id: $participantId found.")
 
             JoinRoomResponse(
-                version = CURRENT_VERSION,
+                version = room.version,
                 participant = ThinParticipantDto(
                     id = currentParticipant.id,
                     name = currentParticipant.name.value
@@ -151,18 +150,18 @@ class CustomWebSocketHandler(
         logger.debug { "DISCONNECTED ${session.id}: $status" }
 
         val roomAndParticipant = service.leaveRoom(session.id)
-        val roomId = roomAndParticipant.first
+        val room = roomAndParticipant.first
         val participantId = roomAndParticipant.second
 
         val response = LeftRoomResponse(
             participantId = participantId,
-            version = CURRENT_VERSION
+            version = room.version
         )
 
         val jsonResponse = objectMapper.writeValueAsString(response)
 
         sender.multicastExceptSender(
-            roomId,
+            room.id,
             session.id,
             jsonResponse
         )
