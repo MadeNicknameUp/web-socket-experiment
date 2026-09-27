@@ -5,7 +5,7 @@ import java.util.UUID
 
 interface RoomRepository {
 
-    fun findById(id: UUID?): Room?
+    fun findById(id: UUID): Room?
 
     fun save(room: Room): Room
 }

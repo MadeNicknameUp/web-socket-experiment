@@ -117,7 +117,7 @@ class WebSocketService(
 
         val connection = connectionRepository.findBySessionId(sessionId)
 
-        val room = roomRepository.findById(connection?.roomId)
+        val room = connection?.roomId?.let(roomRepository::findById)
 
         if (connection != null && room != null) {
 
