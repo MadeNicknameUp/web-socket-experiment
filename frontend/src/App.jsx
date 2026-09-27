@@ -1,10 +1,11 @@
+import { CreateRoom } from "./component/create-room.jsx";
 import './App.css'
 
 function App() {
 
   return (
     <>
-      MY TEXT
+      <CreateRoom />
     </>
   )
 }

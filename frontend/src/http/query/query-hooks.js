@@ -1,5 +1,5 @@
-import { useQuery } from '@tanstack/react-query'
-import { createRoom, joinRoom } from "../http/request/api-requests.js"
+import { useQuery, useMutation } from '@tanstack/react-query'
+import { createRoom, joinRoom } from "../request/api-requests.js"
 
 const CREATE_ROOM_QUERY_KEY = 'createRoom'
 const JOIN_ROOM_QUERY_KEY = 'joinRoom'

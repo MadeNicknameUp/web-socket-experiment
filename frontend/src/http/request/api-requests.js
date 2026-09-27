@@ -1,4 +1,4 @@
-import { httpClientInsatce } from "src/config/axios.js";
+import { httpClientInstance } from "../../config/axios.js";
 
 const httpClient = httpClientInstance();
 
