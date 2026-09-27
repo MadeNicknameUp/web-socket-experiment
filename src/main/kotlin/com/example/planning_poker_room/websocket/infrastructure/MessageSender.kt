@@ -1,4 +1,4 @@
-package com.example.planning_poker_room.websocket
+package com.example.planning_poker_room.websocket.infrastructure
 
 import com.example.planning_poker_room.store.repository.ConnectionRepository
 import com.example.planning_poker_room.store.repository.SessionRepository

@@ -1,4 +1,4 @@
-package com.example.planning_poker_room.websocket
+package com.example.planning_poker_room.websocket.infrastructure
 
 import com.example.planning_poker_room.api.service.RoomService
 import com.example.planning_poker_room.exception.unit.InvalidMessageException

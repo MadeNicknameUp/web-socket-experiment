@@ -1,6 +1,6 @@
 package com.example.planning_poker_room.websocket.configuration
 
-import com.example.planning_poker_room.websocket.CustomWebSocketHandler
+import com.example.planning_poker_room.websocket.handler.CustomWebSocketHandler
 import org.springframework.context.annotation.Configuration
 import org.springframework.web.socket.config.annotation.EnableWebSocket
 import org.springframework.web.socket.config.annotation.WebSocketConfigurer
