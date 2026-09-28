@@ -9,10 +9,10 @@ export const createRoom = async (roomName, hostName) => {
     return response.data
 }
 
-export const joinRoom = async (roomId, userName) => {
+export const joinRoom = async (roomId, name) => {
     const response = await httpClient.post(
         `/api/rooms/${roomId}/participants`, 
-        { userName }
+        { name }
     )
 
     return response.data

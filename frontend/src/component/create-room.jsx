@@ -1,4 +1,5 @@
 import { useCreateRoom } from "../http/query/query-hooks.js";
+import {useNavigate} from "react-router";
 import { useState } from "react";
 
 export const CreateRoom = () => {
@@ -6,15 +7,22 @@ export const CreateRoom = () => {
     const [roomName, setRoomName] = useState("");
     const [hostName, setHostName] = useState("");
 
-    let mutation = useCreateRoom();
+    const createRoomMutation = useCreateRoom();
+
+    const navigate = useNavigate();
 
     function handleSubmit(event) {
         event.preventDefault();
 
-        mutation.mutate({
+        createRoomMutation.mutate({
             roomName,
             hostName
+        }, {
+            onSuccess: (data) => {
+                navigate(`/rooms/${data.roomId}`)
+            }
         });
+
     }
 
     return (
@@ -36,16 +44,12 @@ export const CreateRoom = () => {
                 />
                 <button
                     type="submit"
-                    disabled={mutation.isPending}
-                >{mutation.isPending ? "Creating..." : "Create Room"}</button>
+                    disabled={createRoomMutation.isPending}
+                >{createRoomMutation.isPending ? "Creating..." : "Create Room"}</button>
             </form>
 
-            {mutation.isError && (
+            {createRoomMutation.isError && (
                 <p className="errorMessage">Something went wrong.</p>
-            )}
-
-            {mutation.isSuccess && (
-                <p className="successMessage">Room created: {mutation.data.roomId}</p>
             )}
         </section>
     ) 

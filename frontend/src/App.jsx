@@ -1,13 +1,8 @@
-import { CreateRoom } from "./component/create-room.jsx";
-import './App.css'
+import {Router} from "./navigation/router.jsx";
 
 function App() {
 
-  return (
-    <>
-        <CreateRoom />
-    </>
-  )
+  return <Router />;
 }
 
 export default App

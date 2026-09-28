@@ -10,7 +10,7 @@ export const useCreateRoom = () => {
 
 export const useJoinRoom = () => {
     return useMutation({
-        mutationFn: ({ roomId, userName }) =>
-            joinRoom(roomId, userName)
+        mutationFn: ({ roomId, name }) =>
+            joinRoom(roomId, name)
     })
 }
