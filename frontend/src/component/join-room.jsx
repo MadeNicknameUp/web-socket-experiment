@@ -1,8 +1,11 @@
+import {useJoinRoom} from "../http/query/query-hooks.js";
 import {useParams} from "react-router";
 
 export const JoinRoom = () => {
 
-    // Will use useParams() here.
+    const { roomId } = useParams();
 
-    return <h1>Join Room Component</h1>
+    const joinRoomMutation = useJoinRoom()
+
+    return <h1>Join Room Component</h1>;
 }
